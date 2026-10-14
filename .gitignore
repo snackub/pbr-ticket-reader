@@ -1,5 +1,6 @@
 # Local preview and editor files
 .preview/
+*.pen
 __pycache__/
 *.py[cod]
 .DS_Store
@@ -10,8 +11,8 @@ records/
 exports/
 backups/
 *.csv
-yashima-pbr-*.json
-yashima-pbr_*.json
+*-pbr-*.json
+*-pbr_*.json
 
 # Credentials
 .env

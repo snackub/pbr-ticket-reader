@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light">
-    <meta name="description" content="屋島P&BR利用券読取システムの画面プレビュー。実験日ごとの乗車・帰着を記録するためのHTML・CSS初版です。">
-    <title>屋島P&BR | 利用券読取</title>
+    <meta name="description" content="利用券読取システムの画面プレビュー。実験日ごとの乗車・帰着を記録するためのHTML・CSS初版です。">
+    <title>利用券読取 | 画面プレビュー</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231b353a'/%3E%3Cpath d='M10 12h20v5a3 3 0 0 0 0 6v5H10v-5a3 3 0 0 0 0-6z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -31,7 +31,7 @@
       <header class="app-header">
         <div class="brand">
           <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#icon-ticket"/></svg></span>
-          <div><p class="brand-name">屋島 P&amp;BR</p><h1>利用券読取</h1></div>
+          <h1>利用券読取</h1>
         </div>
         <span class="preview-badge">画面プレビュー</span>
       </header>
@@ -39,87 +39,70 @@
       <main id="main-content">
         <aside class="preview-notice" id="preview-notice" aria-label="プレビューの案内">
           <svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg>
-          <p>画面の確認用です。<span>読取・記録・出力はまだ利用できません。</span></p>
+          <p>画面の確認用</p>
         </aside>
 
         <section class="date-toolbar" aria-label="実験日の選択">
           <div class="date-control">
             <label for="event-date">実験日 <span class="example-label">表示例</span></label>
             <div class="date-actions">
-              <input id="event-date" name="eventDate" type="date" value="2026-11-21" aria-describedby="date-help">
+              <input id="event-date" name="eventDate" type="date" value="2026-11-21">
               <button class="button button-add" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg><span>日付を追加</span></button>
             </div>
           </div>
-          <p class="date-help" id="date-help">日付を変えても、<br class="desktop-break">記録は削除されません。</p>
         </section>
 
         <section class="overview" aria-label="選択した実験日の集計">
-          <article class="metric-card metric-outstanding">
-            <div class="metric-title"><h2>未OUT</h2><svg class="icon" aria-hidden="true"><use href="#icon-car"/></svg></div>
-            <div class="metric-values"><p><strong id="outstanding-vehicles">0</strong><span>台</span></p><p><strong id="outstanding-people">0</strong><span>人</span></p></div>
-            <p class="metric-caption">未帰着の車両・人数</p>
-          </article>
           <article class="metric-card">
             <div class="metric-title"><h2>累計利用</h2><svg class="icon" aria-hidden="true"><use href="#icon-people"/></svg></div>
             <div class="metric-values"><p><strong id="total-vehicles">0</strong><span>台</span></p><p><strong id="total-people">0</strong><span>人</span></p></div>
             <div class="event-counts"><span>IN <b id="in-count">0</b>件</span><span>OUT <b id="out-count">0</b>件</span></div>
           </article>
         </section>
-        <p class="metric-footnote">INは乗車、OUTは帰着です。未OUT台数は、実際の駐車台数とは限りません。</p>
 
-        <div class="workspace-grid">
-          <div class="reader-column">
-            <section class="card scanner-card" aria-labelledby="scanner-heading">
-              <div class="card-heading"><span class="section-number">01</span><div><h2 id="scanner-heading">利用券を読み取る</h2><p>1枚の利用券を、1台の車両として記録します。</p></div></div>
-              <fieldset class="mode-switch">
-                <legend class="visually-hidden">記録する操作</legend>
-                <div class="mode-option"><input id="mode-in" name="scan-mode" type="radio" value="IN" checked><label class="mode-label" for="mode-in"><span><b>IN</b><span>乗車</span></span><svg class="icon mode-check" aria-hidden="true"><use href="#icon-check"/></svg></label></div>
-                <div class="mode-option"><input id="mode-out" name="scan-mode" type="radio" value="OUT"><label class="mode-label" for="mode-out"><span><b>OUT</b><span>帰着</span></span><svg class="icon mode-check" aria-hidden="true"><use href="#icon-check"/></svg></label></div>
-              </fieldset>
-              <div class="camera-preview" id="camera-preview" aria-label="カメラ表示領域。現在は停止中です">
-                <span class="camera-status"><span aria-hidden="true"></span>カメラ停止中</span>
-                <div class="scan-frame" aria-hidden="true"><i class="corner corner-tl"></i><i class="corner corner-tr"></i><i class="corner corner-bl"></i><i class="corner corner-br"></i><svg class="camera-placeholder-icon icon"><use href="#icon-camera"/></svg><p>カメラ映像</p></div>
-                <p class="camera-caption">券のコードを枠内に合わせてください</p>
-                <span class="code-format">Code128 / QR</span>
-              </div>
-              <div class="scan-actions"><button class="button button-primary" id="start-scan" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg>読取開始</button><button class="button button-secondary" id="stop-scan" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-stop"/></svg>停止</button></div>
-              <ol class="scan-steps" aria-label="INの登録手順"><li>券を読む</li><li>人数を入力</li><li>登録</li></ol>
-              <p class="scanner-help">OUTは、対応するINの人数を使って集計します。</p>
-            </section>
-
-            <details class="card people-panel">
-              <summary><span class="card-heading"><span class="section-number">02</span><span><span class="summary-title">人数を入力</span><span class="summary-caption">タップして入力画面を確認</span></span></span><svg class="icon disclosure-icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
-              <div class="people-content">
-                <p class="panel-help">INの読取後に人数を入力し、「登録」で確定します。</p>
-                <div class="ticket-preview"><span>券番号</span><strong id="pending-ticket">— — — — —</strong><small>読取後に表示</small></div>
-                <label class="input-label" for="people-input">乗車人数 <span>1人以上</span></label>
-                <div class="number-entry"><input id="people-input" name="people" type="number" inputmode="numeric" min="1" step="1" placeholder="未入力" aria-describedby="people-help"><span>人</span></div>
-                <div class="keypad" role="group" aria-label="人数入力用テンキー（画面プレビュー）">
-                  <button type="button" disabled>1</button><button type="button" disabled>2</button><button type="button" disabled>3</button>
-                  <button type="button" disabled>4</button><button type="button" disabled>5</button><button type="button" disabled>6</button>
-                  <button type="button" disabled>7</button><button type="button" disabled>8</button><button type="button" disabled>9</button>
-                  <button class="keypad-utility" type="button" disabled>クリア</button><button type="button" disabled>0</button><button class="keypad-utility" type="button" aria-label="1桁削除" disabled><svg class="icon" aria-hidden="true"><use href="#icon-backspace"/></svg></button>
-                </div>
-                <p class="people-help" id="people-help">数字を入力するだけでは保存されません。</p>
-                <div class="people-actions"><button class="button button-secondary" id="cancel-in" type="button" disabled>キャンセル</button><button class="button button-primary" id="register-in" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg>登録</button></div>
-              </div>
-            </details>
+        <section class="card scanner-card" aria-labelledby="scanner-heading">
+          <div class="card-heading"><span class="section-number">01</span><h2 id="scanner-heading">利用券を読み取る</h2></div>
+          <fieldset class="mode-switch">
+            <legend class="visually-hidden">記録する操作</legend>
+            <div class="mode-option"><input id="mode-in" name="scan-mode" type="radio" value="IN" checked><label class="mode-label" for="mode-in"><span><b>IN</b><span>乗車</span></span><svg class="icon mode-check" aria-hidden="true"><use href="#icon-check"/></svg></label></div>
+            <div class="mode-option"><input id="mode-out" name="scan-mode" type="radio" value="OUT"><label class="mode-label" for="mode-out"><span><b>OUT</b><span>帰着</span></span><svg class="icon mode-check" aria-hidden="true"><use href="#icon-check"/></svg></label></div>
+          </fieldset>
+          <div class="camera-preview" id="camera-preview" aria-label="カメラ表示領域。現在は停止中です">
+            <span class="camera-status"><span aria-hidden="true"></span>カメラ停止中</span>
+            <div class="scan-frame" aria-hidden="true"><i class="corner corner-tl"></i><i class="corner corner-tr"></i><i class="corner corner-bl"></i><i class="corner corner-br"></i><svg class="camera-placeholder-icon icon"><use href="#icon-camera"/></svg><p>カメラ映像</p></div>
+            <p class="camera-caption">券のコードを枠内に合わせてください</p>
+            <span class="code-format">Code128 / QR</span>
           </div>
+          <div class="scan-actions"><button class="button button-primary" id="start-scan" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg>読取開始</button><button class="button button-secondary" id="stop-scan" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-stop"/></svg>停止</button></div>
+        </section>
 
-          <div class="activity-column">
-            <section class="card outstanding-card" aria-labelledby="outstanding-heading">
-              <div class="list-heading"><div><p class="eyebrow">選択日の状況</p><h2 id="outstanding-heading">未OUT一覧</h2></div><span class="count-badge">0台</span></div>
-              <div class="table-wrap"><table><caption class="visually-hidden">選択日の未OUT車両</caption><thead><tr><th scope="col">券番号</th><th scope="col">人数</th><th scope="col">IN時刻</th></tr></thead><tbody id="outstanding-list"><tr><td colspan="3"><div class="empty-state"><span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-car"/></svg></span><p>未OUTの車両はありません</p><small>帰着前の券をここに表示します。</small></div></td></tr></tbody></table></div>
-            </section>
-            <section class="card history-card" aria-labelledby="history-heading">
-              <div class="list-heading"><div><p class="eyebrow">選択日の記録</p><h2 id="history-heading">読取履歴</h2></div><span class="sort-label">新しい順</span></div>
-              <div class="empty-state" id="history-list"><span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg></span><p>まだ記録はありません</p><small>IN・OUTの記録をここに表示します。</small></div>
-            </section>
+        <details class="card people-panel">
+          <summary><span class="card-heading"><span class="section-number">02</span><span><span class="summary-title">人数を入力</span></span></span><svg class="icon disclosure-icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary>
+          <div class="people-content">
+            <div class="ticket-preview"><span>券番号</span><strong id="pending-ticket">— — — — —</strong></div>
+            <label class="input-label" for="people-input">乗車人数 <span>1人以上</span></label>
+            <div class="number-entry"><input id="people-input" name="people" type="number" inputmode="numeric" min="1" step="1" placeholder="未入力"><span>人</span></div>
+            <div class="keypad" role="group" aria-label="人数入力用テンキー（画面プレビュー）">
+              <button type="button" disabled>1</button><button type="button" disabled>2</button><button type="button" disabled>3</button>
+              <button type="button" disabled>4</button><button type="button" disabled>5</button><button type="button" disabled>6</button>
+              <button type="button" disabled>7</button><button type="button" disabled>8</button><button type="button" disabled>9</button>
+              <button class="keypad-utility" type="button" disabled>クリア</button><button type="button" disabled>0</button><button class="keypad-utility" type="button" aria-label="1桁削除" disabled><svg class="icon" aria-hidden="true"><use href="#icon-backspace"/></svg></button>
+            </div>
+            <div class="people-actions"><button class="button button-secondary" id="cancel-in" type="button" disabled>キャンセル</button><button class="button button-primary" id="register-in" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg>登録</button></div>
           </div>
-        </div>
+        </details>
+
+        <section class="card outstanding-card" aria-labelledby="outstanding-heading">
+          <div class="list-heading"><div><p class="eyebrow">選択日の状況</p><h2 id="outstanding-heading">未OUT一覧</h2></div><span class="count-badge">0台</span></div>
+          <div class="table-wrap"><table><caption class="visually-hidden">選択日の未OUT車両</caption><thead><tr><th scope="col">券番号</th><th scope="col">人数</th><th scope="col">IN時刻</th></tr></thead><tbody id="outstanding-list"><tr><td colspan="3"><div class="empty-state"><span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-car"/></svg></span><p>未OUTの車両はありません</p></div></td></tr></tbody></table></div>
+        </section>
+        <section class="card history-card" aria-labelledby="history-heading">
+          <div class="list-heading"><div><p class="eyebrow">選択日の記録</p><h2 id="history-heading">読取履歴</h2></div><span class="sort-label">新しい順</span></div>
+          <div class="empty-state" id="history-list"><span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-clock"/></svg></span><p>まだ記録はありません</p></div>
+        </section>
 
         <section class="card export-card" aria-labelledby="export-heading">
-          <div class="export-heading"><div><p class="eyebrow">選択日のデータ</p><h2 id="export-heading">記録を出力</h2><p class="panel-help">出力しても、端末内の記録は削除されません。</p></div><span class="record-count">0件</span></div>
+          <div class="export-heading"><div><p class="eyebrow">選択日のデータ</p><h2 id="export-heading">記録を出力</h2></div><span class="record-count">0件</span></div>
           <div class="export-actions"><button class="export-button" id="export-csv" type="button" disabled><span class="file-badge">CSV</span><span><b>CSVを出力</b><small>集計・報告用</small></span><svg class="icon" aria-hidden="true"><use href="#icon-download"/></svg></button><button class="export-button" id="export-json" type="button" disabled><span class="file-badge file-badge-json">JSON</span><span><b>JSONを出力</b><small>バックアップ用</small></span><svg class="icon" aria-hidden="true"><use href="#icon-download"/></svg></button></div>
           <p class="backup-reminder"><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg>記録を守るため、定期的にCSV・JSONを出力してください。</p>
         </section>
@@ -130,7 +113,7 @@
           <details class="delete-all"><summary>全実験日の削除<svg class="icon disclosure-icon" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div><p>すべての実験日の記録を削除する操作です。日別の削除とは別に確認が必要です。</p><label class="delete-confirmation"><input id="confirm-delete-all" type="checkbox" disabled>全実験日の記録を出力済みであることを確認しました</label><button class="button button-danger" id="delete-all" type="button" disabled>全実験日の記録を削除</button></div></details>
         </section>
       </main>
-      <footer class="app-footer"><span>屋島 P&amp;BR 利用券読取</span><span>同じ端末・ブラウザでIN / OUTを記録</span></footer>
+      <footer class="app-footer" aria-hidden="true"></footer>
     </div>
   </body>
 </html>
