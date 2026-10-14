@@ -781,12 +781,12 @@
     }
   }
 
-  function rejectRead(ticket, message) {
+  function rejectRead(ticket, message, tone = "warning") {
     const key = `${ticket}|${message}`;
     const now = performance.now();
     if (lastRejected.key === key && now - lastRejected.at < 2500) return;
     lastRejected = { key, at: now };
-    showMessage(message, "warning");
+    showMessage(message, tone);
   }
 
   function handleDecoded(text, session) {
@@ -805,11 +805,11 @@
       clearScanFeedback();
     }
     if (!isTicket(ticket)) {
-      rejectRead(ticket, "券番号は日2桁＋連番3桁（001～999）の5桁です。");
+      rejectRead(ticket, "券番号は日2桁＋連番3桁（001～999）の5桁です。", "error");
       return;
     }
     if (!date || ticket.slice(0, 2) !== date.slice(8)) {
-      rejectRead(ticket, `券の日（${ticket.slice(0, 2)}日）と選択中の実験日が一致しません。`);
+      rejectRead(ticket, `券の日（${ticket.slice(0, 2)}日）と選択中の実験日が一致しません。`, "error");
       return;
     }
     const records = selectedRecords();
@@ -818,7 +818,7 @@
       return;
     }
     if (type === "OUT" && !records.some((record) => record.ticket === ticket && record.type === "IN")) {
-      rejectRead(ticket, `選択日に券 ${ticket} のINがありません。`);
+      rejectRead(ticket, `選択日に券 ${ticket} のINがありません。`, "error");
       return;
     }
     readLatch = true;
