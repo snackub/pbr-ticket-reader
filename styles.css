@@ -246,3 +246,20 @@ dialog:not([open]) { display: none; }
 .scan-zoom-buttons button:not(:disabled) { cursor: pointer; }
 .scan-zoom-buttons button:disabled { opacity: .55; }
 .scan-zoom > p { color: var(--muted); font-size: 11px; }
+
+/* カメラを見たまま確認できる読取結果 */
+.camera-viewport { position: relative; width: 100%; min-width: 0; border-radius: 10px; isolation: isolate; }
+.camera-viewport .scan-frame { margin-inline: auto; }
+.camera-feedback { position: absolute; z-index: 3; right: 8px; bottom: 8px; left: 8px; display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid #ffffff40; border-radius: 9px; color: #fff; background: #294f63f5; box-shadow: 0 2px 10px #102e3b30; pointer-events: none; }
+.camera-feedback-icon { display: grid; width: 21px; height: 21px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #ffffff24; font-size: 13px; font-weight: 800; line-height: 1; }
+#camera-feedback-message { min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.camera-feedback[data-tone="success"] { background: #0b5d49f5; }
+.camera-feedback[data-tone="warning"] { background: #80520df5; }
+.camera-feedback[data-tone="error"] { background: #932f2ff5; }
+.camera-preview[data-read-tone="info"] { --scan-result-color: #527a9a; }
+.camera-preview[data-read-tone="success"] { --scan-result-color: #13846e; }
+.camera-preview[data-read-tone="warning"] { --scan-result-color: #d08d17; }
+.camera-preview[data-read-tone="error"] { --scan-result-color: #ca4c42; }
+.camera-preview[data-read-tone] .camera-viewport { box-shadow: 0 0 0 3px var(--scan-result-color); }
+.camera-preview[data-read-tone] .camera-status > span:first-child { background: var(--scan-result-color); }
+.camera-preview[data-read-tone] #qr-shaded-region > div { background-color: var(--scan-result-color) !important; }

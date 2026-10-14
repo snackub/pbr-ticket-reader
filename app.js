@@ -14,6 +14,8 @@
     modes: Array.from(document.querySelectorAll('input[name="scan-mode"]')),
     camera: byId("camera-preview"), reader: byId("qr-reader"),
     cameraLabel: byId("camera-status-label"),
+    cameraFeedback: byId("camera-feedback"), cameraFeedbackMessage: byId("camera-feedback-message"),
+    cameraFeedbackIcon: byId("camera-feedback-icon"),
     zoom: byId("scan-zoom"),
     zoomButtons: Array.from(document.querySelectorAll("button[data-scan-zoom]")),
     peoplePanel: document.querySelector(".people-panel"),
@@ -46,6 +48,8 @@
   let lastRejected = { key: "", at: 0 };
   let cooldown = { key: "", until: 0 };
   let idSerial = 0;
+  let scanFeedbackTimer = null;
+  let lastFeedbackReadKey = "";
 
   class StorageConflict extends Error {}
 
@@ -135,9 +139,37 @@
     return { schemaVersion: SCHEMA_VERSION, eventDates: [...dates].sort(), selectedDate: value.selectedDate, records };
   }
 
-  function showMessage(message, tone = "info") {
+  function clearScanFeedback() {
+    if (scanFeedbackTimer !== null) window.clearTimeout(scanFeedbackTimer);
+    scanFeedbackTimer = null;
+    ui.cameraFeedback.hidden = true;
+    ui.cameraFeedbackMessage.textContent = "";
+    delete ui.camera.dataset.readTone;
+    ui.status.setAttribute("aria-live", "polite");
+  }
+
+  function showScanFeedback(message, tone) {
+    // 同じ警告を連続検出しても、通知欄を点滅・再読み上げさせない。
+    if (!ui.cameraFeedback.hidden && ui.cameraFeedbackMessage.textContent === message
+      && ui.cameraFeedback.dataset.tone === tone) return;
+    if (scanFeedbackTimer !== null) window.clearTimeout(scanFeedbackTimer);
+    scanFeedbackTimer = null;
+    ui.status.setAttribute("aria-live", "off");
+    ui.cameraFeedback.dataset.tone = tone;
+    ui.cameraFeedbackIcon.textContent = { info: "i", success: "✓", warning: "!", error: "!" }[tone] || "i";
+    ui.cameraFeedbackMessage.textContent = message;
+    ui.cameraFeedback.hidden = false;
+    ui.camera.dataset.readTone = tone;
+    if (tone === "success") scanFeedbackTimer = window.setTimeout(clearScanFeedback, 3000);
+  }
+
+  function showMessage(message, tone = "info", atCamera = false) {
+    const cameraNotice = atCamera || ((cameraActive() || pending !== null) && tone !== "info");
+    // 読取結果を表示している間、上部とカメラ内で同じ通知を二重に読み上げない。
+    ui.status.setAttribute("aria-live", cameraNotice || !ui.cameraFeedback.hidden ? "off" : "polite");
     ui.status.dataset.tone = tone;
     ui.message.textContent = message;
+    if (cameraNotice) showScanFeedback(message, tone);
   }
 
   function loadStore() {
@@ -350,6 +382,7 @@
       return;
     }
     if (persist({ ...store, selectedDate: date })) {
+      clearScanFeedback();
       renderAll();
       showMessage(`${formatDate(date)}を選択しました。`);
     } else ui.date.value = store.selectedDate || "";
@@ -368,6 +401,7 @@
       return false;
     }
     if (ui.dateDialog.open) ui.dateDialog.close();
+    clearScanFeedback();
     renderAll();
     showMessage(`${formatDate(date)}を${exists ? "選択" : "追加"}しました。`);
     return true;
@@ -446,14 +480,14 @@
     cooldown = { key: `${recordKey(candidate)}|${candidate.type}`, until: performance.now() + 2000 };
     clearPending();
     renderAll();
-    showMessage(`券 ${candidate.ticket} · ${registeredPeople}人の${candidate.type}を登録しました。`, "success");
+    showMessage(`券 ${candidate.ticket} · ${registeredPeople}人の${candidate.type}を登録しました。`, "success", true);
     resumeCamera(true);
   }
 
   function cancelPending() {
     if (!pending || busy || externalSync) return;
     clearPending();
-    if (storageReady) showMessage("登録をキャンセルしました。"); else showMessage("人数入力を閉じました。再読み込みして保存状態を確認してください。", "warning");
+    if (storageReady) showMessage("登録をキャンセルしました。", "info", true); else showMessage("人数入力を閉じました。再読み込みして保存状態を確認してください。", "warning", true);
     resumeCamera(false);
   }
 
@@ -584,12 +618,15 @@
 
   async function startCamera() {
     if (!canManage() || !hasDate()) return;
+    clearScanFeedback();
+    lastFeedbackReadKey = "";
+    lastRejected = { key: "", at: 0 };
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      showMessage("カメラ読取にはHTTPSまたはlocalhostで開いてください。", "error");
+      showMessage("カメラ読取にはHTTPSまたはlocalhostで開いてください。", "error", true);
       return;
     }
     if (typeof window.Html5Qrcode !== "function" || !window.Html5QrcodeSupportedFormats) {
-      showMessage("読取ライブラリを読み込めませんでした。ページを再読み込みしてください。", "error");
+      showMessage("読取ライブラリを読み込めませんでした。ページを再読み込みしてください。", "error", true);
       return;
     }
     let reader;
@@ -600,7 +637,7 @@
         verbose: false
       });
     } catch (error) {
-      showMessage(cameraErrorText(error), "error");
+      showMessage(cameraErrorText(error), "error", true);
       return;
     }
     const session = { reader, cancelled: false, startPromise: null, stopPromise: null, detailedScan: false };
@@ -608,7 +645,7 @@
     scanPhase = "starting";
     readLatch = false;
     renderControls();
-    showMessage("カメラの起動を待っています。");
+    showMessage("カメラの起動を待っています。", "info", true);
     session.startPromise = (async () => {
       try {
         const scanConfig = {
@@ -650,7 +687,7 @@
         });
         scanPhase = "scanning";
         renderControls();
-        showMessage(`${selectedMode}の券を枠内に合わせてください。`);
+        showMessage(`${selectedMode}の券を枠内に合わせてください。`, "info", true);
       } catch (error) {
         if (session.cancelled) return;
         try {
@@ -670,7 +707,7 @@
           readLatch = false;
           ui.reader.replaceChildren();
           renderControls();
-          showMessage(cameraErrorText(error), "error");
+          showMessage(cameraErrorText(error), "error", true);
         }
       }
     })();
@@ -678,6 +715,7 @@
   }
 
   async function stopCamera({ discardPending = true, announce = true } = {}) {
+    if (discardPending && announce && storageReady) clearScanFeedback();
     if (discardPending) clearPending();
     const session = cameraSession;
     if (!session) {
@@ -734,7 +772,7 @@
         renderControls();
       } catch {
         void stopCamera({ discardPending: false, announce: false }).then((stopped) => {
-          if (stopped) showMessage(afterSave ? "記録は保存済みです。カメラの再開に失敗したため停止しました。" : "カメラの再開に失敗したため停止しました。", "warning");
+          if (stopped) showMessage(afterSave ? "記録は保存済みです。カメラの再開に失敗したため停止しました。" : "カメラの再開に失敗したため停止しました。", "warning", true);
         });
       }
     } else if (scanPhase === "idle") {
@@ -760,6 +798,12 @@
     const type = selectedMode;
     const key = `${date}|${ticket}|${type}`;
     if (cooldown.key === key && performance.now() < cooldown.until) return;
+    // 次のコードを読めた時点で前の警告を解除する。倍率変更では消さない。
+    if (lastFeedbackReadKey !== key) {
+      lastFeedbackReadKey = key;
+      lastRejected = { key: "", at: 0 };
+      clearScanFeedback();
+    }
     if (!isTicket(ticket)) {
       rejectRead(ticket, "券番号は日2桁＋連番3桁（001～999）の5桁です。");
       return;
@@ -783,7 +827,7 @@
       scanPhase = "paused";
     } catch {
       void stopCamera({ discardPending: true, announce: false }).then((stopped) => {
-        if (stopped) showMessage("読取を一時停止できなかったため、登録せずカメラを停止しました。", "error");
+        if (stopped) showMessage("読取を一時停止できなかったため、登録せずカメラを停止しました。", "error", true);
       });
       return;
     }
@@ -793,7 +837,7 @@
     if (type === "IN") {
       ui.peoplePanel.open = true;
       ui.people.focus({ preventScroll: true });
-      showMessage(`券 ${ticket} の人数を入力し、登録を押してください。`);
+      showMessage(`券 ${ticket} を読み取りました。人数を入力し、登録を押してください。`, "info", true);
       const pendingId = pending.id;
       window.requestAnimationFrame(() => {
         if (pending?.id === pendingId) ui.peoplePanel.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -809,7 +853,7 @@
       const stopped = await stopCamera({ discardPending: true, announce: false });
       const loaded = loadStore();
       renderAll();
-      if (loaded && stopped) showMessage("別のタブで保存データが変更されました。内容を確認してから再開してください。", "warning");
+      if (loaded && stopped) showMessage("別のタブで保存データが変更されました。内容を確認してから再開してください。", "warning", true);
     } finally {
       externalSync = false;
       renderControls();

@@ -7,9 +7,9 @@
     <meta name="description" content="実験日ごとに利用券の乗車・帰着を記録するスマートフォン向けPOCです。記録は使用中のブラウザに保存します。">
     <title>利用券読取 | POC</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231b353a'/%3E%3Cpath d='M10 12h20v5a3 3 0 0 0 0 6v5H10v-5a3 3 0 0 0 0-6z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./styles.css?v=small-code-1">
+    <link rel="stylesheet" href="./styles.css?v=camera-feedback-3">
     <script src="./vendor/html5-qrcode.min.js" defer></script>
-    <script src="./app.js?v=zoom-ready-2" defer></script>
+    <script src="./app.js?v=camera-feedback-3" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">本文へ移動</a>
@@ -72,8 +72,14 @@
           </fieldset>
           <div class="camera-preview" id="camera-preview" aria-label="カメラ表示領域。現在は停止中です">
             <span class="camera-status"><span aria-hidden="true"></span><span id="camera-status-label">カメラ停止中</span></span>
-            <div id="qr-reader" aria-label="利用券読取のカメラ映像" hidden></div>
-            <div class="scan-frame" aria-hidden="true"><i class="corner corner-tl"></i><i class="corner corner-tr"></i><i class="corner corner-bl"></i><i class="corner corner-br"></i><svg class="camera-placeholder-icon icon"><use href="#icon-camera"/></svg><p>カメラ映像</p></div>
+            <div class="camera-viewport">
+              <div id="qr-reader" aria-label="利用券読取のカメラ映像" hidden></div>
+              <div class="scan-frame" aria-hidden="true"><i class="corner corner-tl"></i><i class="corner corner-tr"></i><i class="corner corner-bl"></i><i class="corner corner-br"></i><svg class="camera-placeholder-icon icon"><use href="#icon-camera"/></svg><p>カメラ映像</p></div>
+              <div class="camera-feedback" id="camera-feedback" role="status" aria-live="polite" aria-atomic="true" hidden>
+                <span class="camera-feedback-icon" id="camera-feedback-icon" aria-hidden="true">i</span>
+                <p id="camera-feedback-message"></p>
+              </div>
+            </div>
             <p class="camera-caption">券のコードを枠内に合わせてください</p>
             <span class="code-format">Code128 / QR</span>
           </div>
