@@ -237,9 +237,9 @@
     ui.deleteAll.disabled = !canManage() || store.records.length === 0 || !ui.confirmDeleteAll.checked;
     ui.camera.classList.toggle("is-active", cameraActive());
     ui.reader.hidden = !cameraActive();
-    ui.zoom.hidden = !cameraActive() || !cameraSession?.detailedScan;
+    ui.zoom.hidden = !cameraActive();
     ui.zoomButtons.forEach((button) => {
-      button.disabled = !storageReady || scanPhase !== "scanning" || pending !== null || busy || externalSync;
+      button.disabled = !storageReady || scanPhase !== "scanning" || !cameraSession?.detailedScan || pending !== null || busy || externalSync;
       button.setAttribute("aria-pressed", String(Number(button.dataset.scanZoom) === scanZoom));
     });
     const video = ui.reader.querySelector("video");
@@ -518,6 +518,7 @@
     const text = `${error?.name || ""} ${error?.message || error || ""}`;
     if (/NotAllowed|Permission|denied/i.test(text)) return "カメラの使用が許可されていません。ブラウザのカメラ設定を確認してください。";
     if (/NotFound|DevicesNotFound/i.test(text)) return "利用できるカメラが見つかりません。";
+    if (/CameraSurfaceTimeout|ScanInitialization/i.test(text)) return "カメラ映像の読取準備が完了しませんでした。もう一度、読取開始を押してください。";
     if (/NotReadable|TrackStart/i.test(text)) return "カメラを起動できません。他のアプリでカメラを使用していないか確認してください。";
     return "カメラを起動できませんでした。カメラ設定を確認し、読取開始を押してください。";
   }
@@ -531,7 +532,7 @@
 
   // 同梱するhtml5-qrcode 2.3.8は、解析キャンバスをCSS表示サイズに縮小する。
   // 映像の元画素を使い、読取倍率を映像と解析画像の両方に反映する。
-  // ライブラリ内部が変わった場合は通常の読取を続け、倍率操作を表示しない。
+  // 倍率操作は映像と解析キャンバスの準備完了後に有効にする。
   function enableDetailedScan(session) {
     const context = session.reader.context;
     const video = ui.reader.querySelector("video");
@@ -564,6 +565,21 @@
     scanZoom = zoom;
     renderControls();
     showMessage(`読取倍率を${zoom}倍にしました。ピントの合う距離で券全体を枠内に収めてください。`);
+  }
+
+  // start()の解決時点では、playingイベントによる解析キャンバス生成が
+  // まだ終わっていない場合がある。映像とキャンバスの準備を待つ。
+  async function waitForReaderSurface(session) {
+    const deadline = performance.now() + 10000;
+    while (!session.cancelled && cameraSession === session) {
+      const reader = session.reader;
+      const video = ui.reader.querySelector("video");
+      if (reader.isScanning && reader.context && reader.qrRegion && reader.canvasElement
+        && video?.readyState >= 2 && video.videoWidth > 0 && video.clientWidth > 0) return true;
+      if (performance.now() >= deadline) throw new Error("CameraSurfaceTimeout");
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+    return false;
   }
 
   async function startCamera() {
@@ -619,7 +635,9 @@
           await reader.start({ facingMode: "environment" }, scanConfig, onDecoded, () => {});
         }
         if (session.cancelled || cameraSession !== session) return;
+        if (!await waitForReaderSurface(session)) return;
         session.detailedScan = enableDetailedScan(session);
+        if (!session.detailedScan) throw new Error("ScanInitialization");
         try {
           const capabilities = reader.getRunningTrackCapabilities();
           if (capabilities.focusMode?.includes("continuous")) {
@@ -636,8 +654,13 @@
       } catch (error) {
         if (session.cancelled) return;
         try {
-          if (reader.isScanning) await reader.stop();
-          reader.clear();
+          if (reader.isScanning) {
+            await reader.stop();
+            reader.clear();
+          } else {
+            reader.shouldScan = false;
+            releaseVideoTracks();
+          }
         } catch {
           releaseVideoTracks();
         }
@@ -672,8 +695,14 @@
     session.stopPromise = (async () => {
       try {
         await session.startPromise;
-        if (session.reader.isScanning) await session.reader.stop();
-        session.reader.clear();
+        if (session.reader.isScanning) {
+          await session.reader.stop();
+          session.reader.clear();
+        } else {
+          // 映像準備中に停止した場合も、撮影と遅れて始まる解析を止める。
+          session.reader.shouldScan = false;
+          releaseVideoTracks();
+        }
         if (cameraSession === session) {
           cameraSession = null;
           scanPhase = "idle";
