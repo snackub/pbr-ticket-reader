@@ -11,6 +11,7 @@ records/
 exports/
 backups/
 *.csv
+ticket-reader-*.json
 *-pbr-*.json
 *-pbr_*.json
 
