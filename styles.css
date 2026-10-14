@@ -234,3 +234,15 @@ dialog:not([open]) { display: none; }
 .date-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 #date-error { min-height: 0; color: var(--danger); font-size: 11px; }
 #date-error:empty { display: none; }
+
+/* 小さい利用券を、ピントの合う距離で読み取るための倍率操作 */
+#qr-reader video { transform-origin: center center; }
+.scan-zoom { display: grid; gap: 7px; }
+.scan-zoom-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.scan-zoom-heading > span { color: var(--muted); font-size: 12px; font-weight: 600; }
+.scan-zoom-buttons { display: flex; gap: 7px; }
+.scan-zoom-buttons button { min-width: 48px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); font-size: 13px; }
+.scan-zoom-buttons button[aria-pressed="true"] { border-color: var(--teal); color: var(--teal-deep); background: #eaf4ef; font-weight: 700; }
+.scan-zoom-buttons button:not(:disabled) { cursor: pointer; }
+.scan-zoom-buttons button:disabled { opacity: .55; }
+.scan-zoom > p { color: var(--muted); font-size: 11px; }

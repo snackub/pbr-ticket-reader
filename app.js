@@ -14,6 +14,8 @@
     modes: Array.from(document.querySelectorAll('input[name="scan-mode"]')),
     camera: byId("camera-preview"), reader: byId("qr-reader"),
     cameraLabel: byId("camera-status-label"),
+    zoom: byId("scan-zoom"),
+    zoomButtons: Array.from(document.querySelectorAll("button[data-scan-zoom]")),
     peoplePanel: document.querySelector(".people-panel"),
     ticket: byId("pending-ticket"), people: byId("people-input"),
     keypad: document.querySelector(".keypad"),
@@ -39,6 +41,7 @@
   let peopleDraft = "";
   let cameraSession = null;
   let scanPhase = "idle";
+  let scanZoom = 1;
   let readLatch = false;
   let lastRejected = { key: "", at: 0 };
   let cooldown = { key: "", until: 0 };
@@ -234,6 +237,13 @@
     ui.deleteAll.disabled = !canManage() || store.records.length === 0 || !ui.confirmDeleteAll.checked;
     ui.camera.classList.toggle("is-active", cameraActive());
     ui.reader.hidden = !cameraActive();
+    ui.zoom.hidden = !cameraActive() || !cameraSession?.detailedScan;
+    ui.zoomButtons.forEach((button) => {
+      button.disabled = !storageReady || scanPhase !== "scanning" || pending !== null || busy || externalSync;
+      button.setAttribute("aria-pressed", String(Number(button.dataset.scanZoom) === scanZoom));
+    });
+    const video = ui.reader.querySelector("video");
+    if (video) video.style.transform = cameraSession?.detailedScan ? `scale(${scanZoom})` : "";
     const labels = { idle: "カメラ停止中", starting: "カメラ起動中", scanning: "読取中", paused: "読取一時停止", stopping: "カメラ停止中…", "stop-error": "カメラ停止エラー" };
     ui.cameraLabel.textContent = labels[scanPhase];
     ui.camera.setAttribute("aria-label", `カメラ表示領域。${labels[scanPhase]}`);
@@ -519,6 +529,43 @@
     });
   }
 
+  // 同梱するhtml5-qrcode 2.3.8は、解析キャンバスをCSS表示サイズに縮小する。
+  // 映像の元画素を使い、読取倍率を映像と解析画像の両方に反映する。
+  // ライブラリ内部が変わった場合は通常の読取を続け、倍率操作を表示しない。
+  function enableDetailedScan(session) {
+    const context = session.reader.context;
+    const video = ui.reader.querySelector("video");
+    if (!context || !session.reader.qrRegion || !video) return false;
+    const drawImage = context.drawImage.bind(context);
+    context.drawImage = (...args) => {
+      if (args.length !== 9 || args[0] !== video) return drawImage(...args);
+      const sourceWidth = args[3] / scanZoom;
+      const sourceHeight = args[4] / scanZoom;
+      if (!(sourceWidth > 0 && sourceHeight > 0)) return drawImage(...args);
+      const sourceX = args[1] + (args[3] - sourceWidth) / 2;
+      const sourceY = args[2] + (args[4] - sourceHeight) / 2;
+      // 端末負荷を抑え、元映像より大きい画像には引き伸ばさない。
+      const scale = Math.min(1, 1280 / sourceWidth, 960 / sourceHeight);
+      const width = Math.max(1, Math.round(sourceWidth * scale));
+      const height = Math.max(1, Math.round(sourceHeight * scale));
+      if (context.canvas.width !== width) context.canvas.width = width;
+      if (context.canvas.height !== height) context.canvas.height = height;
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.imageSmoothingEnabled = false;
+      return drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+    };
+    return true;
+  }
+
+  function changeScanZoom(value) {
+    if (!cameraSession?.detailedScan || scanPhase !== "scanning" || pending || busy || externalSync || !storageReady) return;
+    const zoom = Number(value);
+    if (![1, 2, 3].includes(zoom)) return;
+    scanZoom = zoom;
+    renderControls();
+    showMessage(`読取倍率を${zoom}倍にしました。ピントの合う距離で券全体を枠内に収めてください。`);
+  }
+
   async function startCamera() {
     if (!canManage() || !hasDate()) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -540,7 +587,7 @@
       showMessage(cameraErrorText(error), "error");
       return;
     }
-    const session = { reader, cancelled: false, startPromise: null, stopPromise: null };
+    const session = { reader, cancelled: false, startPromise: null, stopPromise: null, detailedScan: false };
     cameraSession = session;
     scanPhase = "starting";
     readLatch = false;
@@ -548,14 +595,37 @@
     showMessage("カメラの起動を待っています。");
     session.startPromise = (async () => {
       try {
-        await reader.start({ facingMode: "environment" }, {
-          fps: 10,
+        const scanConfig = {
+          fps: 6,
           aspectRatio: 4 / 3,
           qrbox: (width, height) => ({
             width: Math.floor(Math.min(420, width * 0.9)),
             height: Math.floor(Math.min(180, height * 0.7))
           })
-        }, (text) => handleDecoded(text, session), () => {});
+        };
+        const onDecoded = (text) => handleDecoded(text, session);
+        try {
+          await reader.start({ facingMode: "environment" }, {
+            ...scanConfig,
+            videoConstraints: {
+              facingMode: "environment",
+              width: { ideal: 1920 }, height: { ideal: 1440 },
+              aspectRatio: { ideal: 4 / 3 }
+            }
+          }, onDecoded, () => {});
+        } catch (error) {
+          // 撮影設定に対応しない端末は、従来のカメラ設定で起動する。
+          if (session.cancelled || !/Overconstrained|ConstraintNotSatisfied|Invalid constraint/i.test(String(error))) throw error;
+          await reader.start({ facingMode: "environment" }, scanConfig, onDecoded, () => {});
+        }
+        if (session.cancelled || cameraSession !== session) return;
+        session.detailedScan = enableDetailedScan(session);
+        try {
+          const capabilities = reader.getRunningTrackCapabilities();
+          if (capabilities.focusMode?.includes("continuous")) {
+            await reader.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] });
+          }
+        } catch { /* フォーカス設定に非対応でも読取を続ける。 */ }
         if (session.cancelled || cameraSession !== session) return;
         ui.reader.querySelectorAll("div").forEach((node) => {
           if (!node.firstElementChild && /^Scanner paused\.?$/i.test(node.textContent.trim())) node.textContent = "読取一時停止";
@@ -740,6 +810,9 @@
   ui.start.addEventListener("click", () => { void startCamera(); });
   ui.stop.addEventListener("click", () => { void stopCamera(); });
   ui.retryOut.addEventListener("click", registerPending);
+  ui.zoomButtons.forEach((button) => button.addEventListener("click", () => {
+    if (!button.disabled) changeScanZoom(button.dataset.scanZoom);
+  }));
   ui.register.addEventListener("click", registerPending);
   ui.cancel.addEventListener("click", cancelPending);
   ui.keypad.addEventListener("click", (event) => {

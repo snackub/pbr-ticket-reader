@@ -7,9 +7,9 @@
     <meta name="description" content="実験日ごとに利用券の乗車・帰着を記録するスマートフォン向けPOCです。記録は使用中のブラウザに保存します。">
     <title>利用券読取 | POC</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231b353a'/%3E%3Cpath d='M10 12h20v5a3 3 0 0 0 0 6v5H10v-5a3 3 0 0 0 0-6z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./styles.css?v=small-code-1">
     <script src="./vendor/html5-qrcode.min.js" defer></script>
-    <script src="./app.js" defer></script>
+    <script src="./app.js?v=small-code-1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">本文へ移動</a>
@@ -76,6 +76,14 @@
             <div class="scan-frame" aria-hidden="true"><i class="corner corner-tl"></i><i class="corner corner-tr"></i><i class="corner corner-bl"></i><i class="corner corner-br"></i><svg class="camera-placeholder-icon icon"><use href="#icon-camera"/></svg><p>カメラ映像</p></div>
             <p class="camera-caption">券のコードを枠内に合わせてください</p>
             <span class="code-format">Code128 / QR</span>
+          </div>
+          <div class="scan-zoom" id="scan-zoom" hidden>
+            <div class="scan-zoom-heading"><span id="scan-zoom-label">読取倍率</span><div class="scan-zoom-buttons" role="group" aria-labelledby="scan-zoom-label">
+              <button type="button" data-scan-zoom="1" aria-pressed="true" disabled>1×</button>
+              <button type="button" data-scan-zoom="2" aria-pressed="false" disabled>2×</button>
+              <button type="button" data-scan-zoom="3" aria-pressed="false" disabled>3×</button>
+            </div></div>
+            <p>ピントの合う距離まで離し、倍率を調整してください。</p>
           </div>
           <div class="scan-actions"><button class="button button-primary" id="start-scan" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg>読取開始</button><button class="button button-secondary" id="stop-scan" type="button" disabled><svg class="icon" aria-hidden="true"><use href="#icon-stop"/></svg>停止</button></div>
           <button class="button button-secondary retry-out" id="retry-out" type="button" disabled hidden>OUTの登録を再試行</button>
